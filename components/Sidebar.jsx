@@ -1,9 +1,53 @@
 
+
 import React from 'react';
 // Removed specific type imports from '../types' as they are now used implicitly for runtime.
 // If type checking is desired during development, a separate TypeScript setup would be required.
 
 const Sidebar = ({ history, onSelect, currentId, kernelConfig, setKernelConfig }) => {
+
+  const handleKernelConfigChange = (key, value) => {
+    setKernelConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const RenderToggleAndSlider = ({ id, label, enabled, intensity, onToggle, onIntensityChange }) => {
+    return React.createElement(
+      "div",
+      { className: "space-y-1" },
+      React.createElement(
+        "div",
+        { className: "flex items-center gap-2" },
+        React.createElement("input", {
+          type: "checkbox",
+          id: id,
+          checked: enabled,
+          onChange: e => onToggle(e.target.checked),
+          className: "accent-red-600"
+        }),
+        React.createElement(
+          "label",
+          { htmlFor: id, className: "text-[10px] uppercase font-black cursor-pointer" },
+          label
+        )
+      ),
+      React.createElement(
+        "div",
+        { className: "flex justify-between text-[7px] text-red-900 uppercase font-black mt-1" },
+        React.createElement("span", null, "INTENSITY"),
+        React.createElement("span", { className: "text-white" }, intensity.toFixed(0))
+      ),
+      React.createElement("input", {
+        type: "range",
+        min: "0",
+        max: "100",
+        step: "1",
+        value: intensity,
+        onChange: e => onIntensityChange(parseFloat(e.target.value)),
+        className: "w-full accent-red-600 h-1 bg-red-950 appearance-none border border-red-900 cursor-pointer"
+      })
+    );
+  };
+
   return React.createElement(
     "aside",
     { className: "w-full h-full bg-[#050000] flex flex-col text-red-600" },
@@ -30,7 +74,7 @@ const Sidebar = ({ history, onSelect, currentId, kernelConfig, setKernelConfig }
         React.createElement("input", {
           type: "password",
           value: kernelConfig.groqKey,
-          onChange: e => setKernelConfig(prev => ({ ...prev, groqKey: e.target.value })),
+          onChange: e => handleKernelConfigChange('groqKey', e.target.value),
           className: "w-full bg-black border border-red-900 text-[10px] p-2 text-red-500 focus:border-white outline-none",
           placeholder: "gsk_..."
         })
@@ -42,7 +86,7 @@ const Sidebar = ({ history, onSelect, currentId, kernelConfig, setKernelConfig }
           type: "checkbox",
           id: "useGroq",
           checked: kernelConfig.useGroqForAudio,
-          onChange: e => setKernelConfig(prev => ({ ...prev, useGroqForAudio: e.target.checked })),
+          onChange: e => handleKernelConfigChange('useGroqForAudio', e.target.checked),
           className: "accent-red-600"
         }),
         React.createElement(
@@ -50,7 +94,135 @@ const Sidebar = ({ history, onSelect, currentId, kernelConfig, setKernelConfig }
           { htmlFor: "useGroq", className: "text-[10px] uppercase font-black cursor-pointer" },
           "Use 405B Reasoning"
         )
-      )
+      ),
+      React.createElement("hr", { className: "border-red-950 my-4" }),
+      React.createElement(
+        "h3",
+        { className: "text-[9px] uppercase font-black text-red-900 mb-2" },
+        "Generation Type"
+      ),
+      React.createElement(
+        "div",
+        { className: "flex gap-4 mb-4" },
+        React.createElement(
+          "div",
+          { className: "flex items-center gap-2" },
+          React.createElement("input", {
+            type: "radio",
+            id: "genTypeImage",
+            name: "generationType",
+            value: "image",
+            checked: kernelConfig.generationType === 'image',
+            onChange: e => handleKernelConfigChange('generationType', e.target.value),
+            className: "accent-red-600"
+          }),
+          React.createElement(
+            "label",
+            { htmlFor: "genTypeImage", className: "text-[10px] uppercase font-black cursor-pointer" },
+            "Image"
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "flex items-center gap-2" },
+          React.createElement("input", {
+            type: "radio",
+            id: "genTypeVideo",
+            name: "generationType",
+            value: "video",
+            checked: kernelConfig.generationType === 'video',
+            onChange: e => handleKernelConfigChange('generationType', e.target.value),
+            className: "accent-red-600"
+          }),
+          React.createElement(
+            "label",
+            { htmlFor: "genTypeVideo", className: "text-[10px] uppercase font-black cursor-pointer" },
+            "Video"
+          )
+        )
+      ),
+      kernelConfig.generationType === 'video' &&
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(
+          "h3",
+          { className: "text-[9px] uppercase font-black text-red-900 mb-2 mt-4" },
+          "Video Settings"
+        ),
+        React.createElement(
+          "div",
+          { className: "space-y-2" },
+          React.createElement(
+            "div",
+            { className: "space-y-1" },
+            React.createElement(
+              "label",
+              { className: "text-[9px] uppercase font-black text-red-900" },
+              "Aspect Ratio"
+            ),
+            React.createElement(
+              "select",
+              {
+                value: kernelConfig.videoAspectRatio,
+                onChange: e => handleKernelConfigChange('videoAspectRatio', e.target.value),
+                className: "w-full bg-black border border-red-900 text-[10px] p-2 text-red-500 focus:border-white outline-none"
+              },
+              React.createElement("option", { value: "16:9" }, "16:9 (Landscape)"),
+              React.createElement("option", { value: "9:16" }, "9:16 (Portrait)")
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "space-y-1" },
+            React.createElement(
+              "label",
+              { className: "text-[9px] uppercase font-black text-red-900" },
+              "Resolution"
+            ),
+            React.createElement(
+              "select",
+              {
+                value: kernelConfig.videoResolution,
+                onChange: e => handleKernelConfigChange('videoResolution', e.target.value),
+                className: "w-full bg-black border border-red-900 text-[10px] p-2 text-red-500 focus:border-white outline-none"
+              },
+              React.createElement("option", { value: "720p" }, "720p"),
+              React.createElement("option", { value: "1080p" }, "1080p")
+            )
+          )
+        )
+      ),
+      React.createElement("hr", { className: "border-red-950 my-4" }),
+      React.createElement(
+        "h3",
+        { className: "text-[9px] uppercase font-black text-red-900 mb-2" },
+        "Post-Processing"
+      ),
+      React.createElement(RenderToggleAndSlider, {
+        id: "enableBloom",
+        label: "Bloom",
+        enabled: kernelConfig.enableBloom,
+        intensity: kernelConfig.bloomIntensity,
+        onToggle: value => handleKernelConfigChange('enableBloom', value),
+        onIntensityChange: value => handleKernelConfigChange('bloomIntensity', value)
+      }),
+      React.createElement(RenderToggleAndSlider, {
+        id: "enableChromaticAberration",
+        label: "Chromatic Aberration",
+        enabled: kernelConfig.enableChromaticAberration,
+        intensity: kernelConfig.chromaticAberrationIntensity,
+        onToggle: value => handleKernelConfigChange('enableChromaticAberration', value),
+        onIntensityChange: value => handleKernelConfigChange('chromaticAberrationIntensity', value)
+      }),
+      React.createElement(RenderToggleAndSlider, {
+        id: "enableScanlines",
+        label: "Scanlines",
+        enabled: kernelConfig.enableScanlines,
+        intensity: kernelConfig.scanlineIntensity,
+        onToggle: value => handleKernelConfigChange('enableScanlines', value),
+        onIntensityChange: value => handleKernelConfigChange('scanlineIntensity', value)
+      })
     ),
     React.createElement(
       "div",
@@ -81,11 +253,20 @@ const Sidebar = ({ history, onSelect, currentId, kernelConfig, setKernelConfig }
               React.createElement(
                 "div",
                 { className: "flex gap-4 items-center" },
-                React.createElement("img", {
-                  src: item.data.imageUrl,
-                  className: "w-12 h-12 border border-red-900 grayscale group-hover:grayscale-0 transition-all object-cover",
-                  alt: "p"
-                }),
+                item.data.mediaType === 'video'
+                  ? React.createElement("video", {
+                      src: item.data.mediaUrl,
+                      className: "w-12 h-12 border border-red-900 grayscale group-hover:grayscale-0 transition-all object-cover",
+                      alt: "video preview",
+                      muted: true, // Always mute previews
+                      loop: true,
+                      preload: "metadata"
+                    })
+                  : React.createElement("img", {
+                      src: item.data.mediaUrl,
+                      className: "w-12 h-12 border border-red-900 grayscale group-hover:grayscale-0 transition-all object-cover",
+                      alt: "p"
+                    }),
                 React.createElement(
                   "div",
                   { className: "flex-1 min-w-0" },

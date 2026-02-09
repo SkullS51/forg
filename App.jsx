@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { GenerationState } from './types.js'; // Updated import
@@ -21,6 +22,7 @@ const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [cooldown, setCooldown] = useState(0); 
+  const [showApiKeyPrompt, setShowApiKeyPrompt] = useState(false); // New state for API key prompt
   
   const [kernelConfig, setKernelConfig] = useState(() => {
     const saved = localStorage.getItem('VOID_KERNEL_CONFIG');
@@ -28,12 +30,50 @@ const App = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return { ...parsed, groqKey: parsed.groqKey || defaultKey };
+        return { 
+          ...parsed, 
+          groqKey: parsed.groqKey || defaultKey,
+          // New post-processing defaults
+          enableBloom: parsed.enableBloom ?? true,
+          bloomIntensity: parsed.bloomIntensity ?? 50,
+          enableChromaticAberration: parsed.enableChromaticAberration ?? true,
+          chromaticAberrationIntensity: parsed.chromaticAberrationIntensity ?? 50,
+          enableScanlines: parsed.enableScanlines ?? true,
+          scanlineIntensity: parsed.scanlineIntensity ?? 50,
+          // New video generation defaults
+          generationType: parsed.generationType ?? 'image',
+          videoAspectRatio: parsed.videoAspectRatio ?? '16:9',
+          videoResolution: parsed.videoResolution ?? '720p',
+        };
       } catch (e) {
-        return { groqKey: defaultKey, useGroqForAudio: true };
+        return { 
+          groqKey: defaultKey, 
+          useGroqForAudio: true,
+          enableBloom: true,
+          bloomIntensity: 50,
+          enableChromaticAberration: true,
+          chromaticAberrationIntensity: 50,
+          enableScanlines: true,
+          scanlineIntensity: 50,
+          generationType: 'image',
+          videoAspectRatio: '16:9',
+          videoResolution: '720p',
+        };
       }
     }
-    return { groqKey: defaultKey, useGroqForAudio: true };
+    return { 
+      groqKey: defaultKey, 
+      useGroqForAudio: true,
+      enableBloom: true,
+      bloomIntensity: 50,
+      enableChromaticAberration: true,
+      chromaticAberrationIntensity: 50,
+      enableScanlines: true,
+      scanlineIntensity: 50,
+      generationType: 'image',
+      videoAspectRatio: '16:9',
+      videoResolution: '720p',
+    };
   });
 
   const audioContextRef = useRef(null);
@@ -106,6 +146,10 @@ const App = () => {
                   backoff *= 2;
                   continue;
               }
+              if (i instanceof Error && error.message.includes("Requested entity was not found.")) {
+                // Specific error for Veo API key issues
+                throw new Error("VEO_API_KEY_ERROR: Requested entity was not found. Please select a valid paid API key.");
+              }
               if (i === retries - 1) throw error;
               await new Promise(r => setTimeout(r, backoff));
           }
@@ -115,8 +159,9 @@ const App = () => {
 
 
   const handleGenerate = async () => {
-    if (!prompt.trim() || status === GenerationState.GENERATING || cooldown > 0) return;
+    if (!prompt.trim() || status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING || cooldown > 0) return;
     setError(null);
+    setShowApiKeyPrompt(false);
     await resumeAudio();
 
     try {
@@ -124,23 +169,60 @@ const App = () => {
       if (!process.env.API_KEY || process.env.API_KEY === "") {
         throw new Error("GEMINI_API_KEY_UNDEFINED: Ensure process.env.API_KEY is configured in your environment.");
       }
+
+      // Initialize GoogleGenAI instance inside handleGenerate to ensure latest API key
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      setStatus(GenerationState.GENERATING); 
-      setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...");
-      const imageResponse = await callGeminiWithRetry(() => 
-        ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents: { 
-            parts: [{ text: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.` }] 
-          },
-          config: { imageConfig: { aspectRatio: "1:1" } }
-        })
-      );
+      let mediaUrl = null;
+      let mediaType = kernelConfig.generationType;
 
-      const imgPart = imageResponse.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-      if (!imgPart?.inlineData?.data) throw new Error("ART_CORE_FAILURE");
-      const imageUrl = `data:image/png;base64,${imgPart.inlineData.data}`;
+      if (kernelConfig.generationType === 'video') {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          setShowApiKeyPrompt(true);
+          return;
+        }
+        
+        setStatus(GenerationState.VIDEO_GENERATING); 
+        setLoadingMessage("PREPARING VIDEO SEQUENCE...");
+        
+        let operation = await callGeminiWithRetry(() => ai.models.generateVideos({
+          model: 'veo-3.1-fast-generate-preview',
+          prompt: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART. Generate a short, brutal, metal-themed video.`,
+          config: {
+            numberOfVideos: 1,
+            resolution: kernelConfig.videoResolution,
+            aspectRatio: kernelConfig.videoAspectRatio
+          }
+        }));
+
+        setLoadingMessage("RENDERING VOID-SEQUENCE (THIS MAY TAKE MINUTES)...");
+        while (!operation.done) {
+          await new Promise(resolve => setTimeout(resolve, 10000)); // Poll every 10 seconds
+          operation = await callGeminiWithRetry(() => ai.operations.getVideosOperation({operation: operation}));
+        }
+
+        const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+        if (!downloadLink) throw new Error("VIDEO_CORE_FAILURE: No video URI returned.");
+        mediaUrl = `${downloadLink}&key=${process.env.API_KEY}`; // Append API key for direct fetch
+
+      } else { // 'image' generation
+        setStatus(GenerationState.GENERATING); 
+        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...");
+        const imageResponse = await callGeminiWithRetry(() => 
+          ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: { 
+              parts: [{ text: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.` }] 
+            },
+            config: { imageConfig: { aspectRatio: "1:1" } }
+          })
+        );
+
+        const imgPart = imageResponse.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+        if (!imgPart?.inlineData?.data) throw new Error("ART_CORE_FAILURE");
+        mediaUrl = `data:image/png;base64,${imgPart.inlineData.data}`;
+      }
 
       setLoadingMessage("ROUTING HIGH-DENSITY PROTOCOL (AUDIO)...");
       let audioConfig;
@@ -183,7 +265,8 @@ const App = () => {
       }
 
       const result = {
-        imageUrl: imageUrl,
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
         trackStructure: {
           bpm: audioConfig.bpm || 666,
           pattern: audioConfig.pattern || Array(16).fill(0).map(() => Array(8).fill(0).map(() => Math.random() > 0.5 ? 255 : 0)),
@@ -202,7 +285,11 @@ const App = () => {
           if (error.message.includes("RATE_LIMIT_EXCEEDED_FINAL")) {
               setError("SENTRY_RATE_LIMIT (429) - SYSTEM COOLDOWN");
               setCooldown(45); 
-          } else {
+          } else if (error.message.includes("VEO_API_KEY_ERROR")) {
+              setError(error.message);
+              setShowApiKeyPrompt(true);
+          }
+          else {
               setError(error.message);
           }
       } else {
@@ -213,6 +300,18 @@ const App = () => {
       setLoadingMessage(''); 
     }
   };
+
+  const handleSelectApiKey = async () => {
+    try {
+      await window.aistudio.openSelectKey();
+      setShowApiKeyPrompt(false); // Assume successful selection and hide the prompt
+      setError(null); // Clear any previous API key errors
+      // The `GoogleGenAI` instance will be re-created in `handleGenerate` with the new key.
+    } catch (e) {
+      setError("API_KEY_SELECTION_FAILED: " + e.message);
+    }
+  };
+
 
   return React.createElement(
     "div",
@@ -291,7 +390,7 @@ const App = () => {
         React.createElement(
           "div",
           { className: "flex-1 relative flex items-center justify-center p-2 md:p-8 overflow-hidden" },
-          (status === GenerationState.GENERATING || cooldown > 0 || error) && // Added error to conditional display
+          (status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING || cooldown > 0 || error || showApiKeyPrompt) && 
             React.createElement(
               "div",
               { className: "absolute inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center text-center p-4" },
@@ -315,41 +414,95 @@ const App = () => {
                       "Kernel Safety Lock Engaged"
                     )
                   )
-                : error
+                : showApiKeyPrompt
                     ? React.createElement(
-                        "div",
-                        { className: "text-2xl md:text-5xl text-white bg-red-800 p-4 border-2 border-white animate-pulse uppercase font-black tracking-wide" },
-                        `ERROR: ${error}`
-                      )
-                    : React.createElement(
                         React.Fragment,
                         null,
                         React.createElement(
                           "div",
-                          { className: "text-5xl md:text-8xl font-black italic text-white animate-pulse" },
-                          "WEAPONIZING..."
+                          { className: "text-xl md:text-4xl text-white bg-red-800 p-4 border-2 border-white animate-pulse uppercase font-black tracking-wide" },
+                          `ERROR: ${error || "VEO_API_KEY_REQUIRED"}`
                         ),
                         React.createElement(
                           "div",
-                          { className: "text-red-600 text-[10px] md:text-sm font-black tracking-[1.5em] mt-4 uppercase" },
-                          loadingMessage || 'Initializing Protocol'
+                          { className: "text-red-600 text-[10px] md:text-sm font-black tracking-[0.5em] mt-6 uppercase" },
+                          "VEO models require a paid API key. Select or configure one to proceed."
+                        ),
+                        React.createElement(
+                          "button",
+                          {
+                            onClick: handleSelectApiKey,
+                            className: "mt-8 bg-red-600 text-black px-6 py-3 text-lg hover:bg-white transition-all font-black italic uppercase"
+                          },
+                          "Select API Key"
+                        ),
+                        React.createElement(
+                          "a",
+                          {
+                            href: "ai.google.dev/gemini-api/docs/billing",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            className: "mt-4 text-xs text-red-900 hover:text-white underline uppercase"
+                          },
+                          "Billing Documentation"
                         )
                       )
+                    : error
+                        ? React.createElement(
+                            "div",
+                            { className: "text-2xl md:text-5xl text-white bg-red-800 p-4 border-2 border-white animate-pulse uppercase font-black tracking-wide" },
+                            `ERROR: ${error}`
+                          )
+                        : React.createElement(
+                            React.Fragment,
+                            null,
+                            React.createElement(
+                              "div",
+                              { className: "text-5xl md:text-8xl font-black italic text-white animate-pulse" },
+                              "WEAPONIZING..."
+                            ),
+                            React.createElement(
+                              "div",
+                              { className: "text-red-600 text-[10px] md:text-sm font-black tracking-[1.5em] mt-4 uppercase" },
+                              loadingMessage || 'Initializing Protocol'
+                            )
+                          )
             ),
-          currentResult
-            ? React.createElement(
-                "div",
-                { className: "relative w-full h-full max-w-full max-h-full aspect-square border-2 border-red-600 bg-black shadow-[0_0_50px_rgba(255,0,0,0.1)]" },
-                React.createElement(Visualizer, {
-                  imageUrl: currentResult.imageUrl,
-                  isActive: status === GenerationState.PLAYING,
-                  bpm: currentResult.trackStructure.bpm,
-                  currentPrompt: prompt,
-                  overdrive: overdrive,
-                  chaosMode: chaosMode
-                })
-              )
-            : !loadingMessage && !cooldown && !error && // Only show idle title if no loading, cooldown, or error
+          currentResult && !showApiKeyPrompt
+            ? currentResult.mediaType === 'video'
+              ? React.createElement(
+                  "div",
+                  { className: "relative w-full h-full max-w-full max-h-full aspect-video border-2 border-red-600 bg-black shadow-[0_0_50px_rgba(255,0,0,0.1)]" },
+                  React.createElement("video", {
+                    src: currentResult.mediaUrl,
+                    controls: true,
+                    loop: true,
+                    autoPlay: true,
+                    muted: false, // Start muted for better UX, user can unmute
+                    className: "w-full h-full object-contain"
+                  })
+                )
+              : React.createElement( // Image visualizer
+                  "div",
+                  { className: "relative w-full h-full max-w-full max-h-full aspect-square border-2 border-red-600 bg-black shadow-[0_0_50px_rgba(255,0,0,0.1)]" },
+                  React.createElement(Visualizer, {
+                    mediaUrl: currentResult.mediaUrl,
+                    mediaType: currentResult.mediaType,
+                    isActive: status === GenerationState.PLAYING,
+                    bpm: currentResult.trackStructure.bpm,
+                    currentPrompt: prompt,
+                    overdrive: overdrive,
+                    chaosMode: chaosMode,
+                    // New props for post-processing
+                    enableBloom: kernelConfig.enableBloom,
+                    bloomIntensity: kernelConfig.bloomIntensity,
+                    enableChromaticAberration: kernelConfig.enableChromaticAberration,
+                    chromaticAberrationIntensity: kernelConfig.chromaticAberrationIntensity,
+                    enableScanlines: kernelConfig.enableScanlines,
+                    scanlineIntensity: kernelConfig.scanlineIntensity,
+                  })
+                )
+            : !loadingMessage && !cooldown && !error && !showApiKeyPrompt && // Only show idle title if no loading, cooldown, error, or API key prompt
               React.createElement(
                 "div",
                 { className: "opacity-10 text-3xl md:text-7xl tracking-tighter text-red-900 text-center uppercase" },
@@ -375,10 +528,10 @@ const App = () => {
               "button",
               {
                 onClick: handleGenerate,
-                disabled: status === GenerationState.GENERATING || cooldown > 0,
+                disabled: status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING || cooldown > 0 || showApiKeyPrompt,
                 className: "bg-red-600 text-black px-6 md:px-12 text-xl md:text-4xl hover:bg-white transition-all font-black italic disabled:opacity-30"
               },
-              status === GenerationState.GENERATING ? 'BUSY' : 'IGNITE'
+              status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING ? 'BUSY' : 'IGNITE'
             )
           ),
           React.createElement(
@@ -420,13 +573,18 @@ const App = () => {
             React.createElement(
               "button",
               {
-                onClick: () =>
-                  currentResult &&
-                  Object.assign(document.createElement('a'), {
-                    download: `VOID_${Date.now()}.png`,
-                    href: currentResult.imageUrl
-                  }).click(),
-                className: "border border-red-900 text-[10px] p-2 hover:bg-red-900 hover:text-white uppercase transition-all font-black"
+                onClick: () => {
+                  if (currentResult) {
+                    const downloadLink = currentResult.mediaUrl;
+                    const filename = currentResult.mediaType === 'video' ? `VOID_${Date.now()}.mp4` : `VOID_${Date.now()}.png`;
+                    Object.assign(document.createElement('a'), {
+                      download: filename,
+                      href: downloadLink
+                    }).click();
+                  }
+                },
+                disabled: !currentResult,
+                className: "border border-red-900 text-[10px] p-2 hover:bg-red-900 hover:text-white uppercase transition-all font-black disabled:opacity-30"
               },
               "Extract"
             )

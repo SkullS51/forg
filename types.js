@@ -3,13 +3,17 @@
 export const GenerationState = {
   IDLE: 'IDLE',
   GENERATING: 'GENERATING',
+  VIDEO_GENERATING: 'VIDEO_GENERATING', // New state for video specific loading
   PLAYING: 'PLAYING',
   ERROR: 'ERROR'
 };
 
-// The following are now exported as empty objects to satisfy runtime imports
-// that might still be referencing these names after TypeScript interfaces were removed.
-export const MetalTrackStructure = {};
-export const GenerationResult = {};
-export const HistoryItem = {};
-export const KernelConfig = {};
+export const MetalTrackStructure = {}; // Placeholder if needed elsewhere
+export const GenerationResult = {
+  mediaUrl: String, // Can be image data URI or video download URI
+  mediaType: String, // 'image' or 'video'
+  trackStructure: MetalTrackStructure,
+  prompt: String
+};
+export const HistoryItem = {}; // Placeholder if needed elsewhere
+export const KernelConfig = {}; // Placeholder if needed elsewhere
