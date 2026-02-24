@@ -318,7 +318,7 @@ export default function App() {
           try {
             const response = await fetch('/api/db-test');
             const data = await response.json();
-            alert(`DB Test Status: ${data.status}, Time: ${data.time}`);
+            alert(`DB Test Status: ${data.status}\nTime: ${data.time}`);
           } catch (err) {
             alert(`DB Test Failed: ${err.message}`);
           }
