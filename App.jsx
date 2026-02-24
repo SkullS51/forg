@@ -207,7 +207,7 @@ export default function App() {
 
       } else { // 'image' generation
         setStatus(GenerationState.GENERATING); 
-        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)..."); loop
+        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)..."); 
         const imageResponse = await callGeminiWithRetry(() => 
           ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
