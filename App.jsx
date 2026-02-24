@@ -1,4 +1,4 @@
-
+⅝
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI } from "@google/genai";
@@ -163,7 +163,8 @@ export default function App() {
   };
 
   const handleGenerate = async () => {;
-    setError(null);
+  if (!prompt.trim() || status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING) retu
+                                      setError(null);
     setShowApiKeyPrompt(false);
     await resumeAudio();
 
