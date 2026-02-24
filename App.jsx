@@ -206,11 +206,11 @@ export default function App() {
         mediaUrl = `${downloadLink}&key=${process.env.API_KEY}`; // Append API key for direct fetch
 
       } else { // 'image' generation
-        setStatus(GenerationState.GENERATING); 
-        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)..."); 
+        setStatus(GenerationState.GENERATING); i
+        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...")
         const imageResponse = await callGeminiWithRetry(() => 
           ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
+            model: 'gemini-1.5-flash-image',
             contents: { 
               parts: [{ text: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.` }] 
             },
