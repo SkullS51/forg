@@ -206,7 +206,7 @@ export default function App() {
         mediaUrl = `${downloadLink}&key=${process.env.API_KEY}`; // Append API key for direct fetch
 
       } else { // 'image' generation
-        setStatus(GenerationState.GENERATING); i
+        setStatus(GenerationState.GENERATING); 
         setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...")
         const imageResponse = await callGeminiWithRetry(() => 
           ai.models.generateContent({
