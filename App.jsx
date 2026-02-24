@@ -225,60 +225,7 @@ export default function App() {
       setLoadingMessage("ROUTING HIGH-DENSITY PROTOCOL (AUDIO)...");
       let audioConfig;
 
-      if (kernelConfig.useGroqForAudio && kernelConfig.groqKey) {
-        const groqRes = await fetchWithRetry("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${kernelConfig.groqKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "llama-3.1-405b-reasoning",
-            messages: [
-              { role: "system", content: "S-1792 KERNEL: Return ONLY raw JSON: { \"bpm\": number, \"pattern\": 16x8 matrix }." },
-              { role: "user", content: `COMPOSITE PATTERN FOR: ${prompt}` }
-            ],
-            response_format: { type: "json_object" }
-          })
-        });
-        const data = await groqRes.json();
-        audioConfig = JSON.parse(data.choices[0].message.content);
-      } else {
-        const audioGeminiResponse = await callGeminiWithRetry(() => 
-          ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: { 
-              parts: [{ text: `Generate brutal metal JSON for "${prompt}". { "bpm": number, "pattern": 16x8 matrix }.` }] 
-            },
-            config: { responseMimeType: "application/json" }
-          })
-        );
-        audioConfig = JSON.parse(audioGeminiResponse.text || '{}');
-      }
-
-      const result = {
-        mediaUrl,
-        mediaType,
-        trackStructure: {
-          bpm: audioConfig.bpm || 666,
-          pattern: audioConfig.pattern || Array(16).fill(0).map(() => Array(8).fill(0).map(() => Math.random() > 0.5 ? 255 : 0)),
-          distorted: true,
-          gain: volume,
-          atmosphere: 'total_annihilation'
-        },
-        prompt
-      };
-
-      setCurrentResult(result);
-      setHistory(prev => [{ id: Date.now().toString(), timestamp: Date.now(), data: result }, ...prev].slice(0, 50));
-      setStatus(GenerationState.PLAYING);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "SYNTHESIS_ERROR");
-      setStatus(GenerationState.ERROR);
-    } finally {
-      setLoadingMessage(''); 
-    }
-  };
+      
 
       let audioConfig;
 
