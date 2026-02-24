@@ -210,7 +210,7 @@ export default function App() {
         setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...")
         const imageResponse = await callGeminiWithRetry(() => 
           ai.models.generateContent({
-            model: 'gemini-1.5-flash-image',
+            model: 'gemini-1.5-flash
             contents: { 
               parts: [{ text: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.` }] 
             },
