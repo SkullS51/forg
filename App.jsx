@@ -96,14 +96,9 @@ export default function App() {
     localStorage.setItem('VOID_CHAOS_MODE', chaosMode.toString());
   }, [chaosMode]);
 
-  useEffect(() => {
-    if (cooldown > 0) {
-      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [cooldown]);
 
-  const resumeAudio = async () => {
+
+ const resumeAudio = async () => {
     if (!audioContextRef.current) {
       const AudioContextClass = (window.AudioContext || window.webkitAudioContext);
       audioContextRef.current = new AudioContextClass();
@@ -167,8 +162,7 @@ export default function App() {
       throw new Error("GEMINI_API_FAILURE_MAX_RETRIES");
   };
 
-  const handleGenerate = async () => {
-    if (!prompt.trim() || status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING || cooldown > 0) return;
+  const handleGenerate = async () => {;
     setError(null);
     setShowApiKeyPrompt(false);
     await resumeAudio();
@@ -212,7 +206,7 @@ export default function App() {
 
       } else { // 'image' generation
         setStatus(GenerationState.GENERATING); 
-        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...");
+        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)..."); loop
         const imageResponse = await callGeminiWithRetry(() => 
           ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
@@ -288,7 +282,6 @@ export default function App() {
       if (error instanceof Error) {
           if (error.message.includes("RATE_LIMIT_EXCEEDED_FINAL")) {
               setError("SENTRY_RATE_LIMIT (429) - SYSTEM COOLDOWN");
-              setCooldown(45); 
           } else if (error.message.includes("VEO_API_KEY_ERROR")) {
               setError(error.message);
               setShowApiKeyPrompt(true);
