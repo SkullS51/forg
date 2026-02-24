@@ -6,6 +6,7 @@ import { GenerationState } from './types.js'; // Updated import
 import Sidebar from './components/Sidebar.jsx';
 import Gallery from '/src/components/Gallery.jsx';
 import AudioEngine from './components/AudioEngine.jsx';
+import Visualizer from './components/Visualizer.jsx';
 
 
 // AudioTrackConfig interface removed as part of TS stripping for direct browser execution.
@@ -168,21 +169,52 @@ export default function App() {
   };
 
   const handleGenerate = async () => {
-    if (!prompt.trim() || status === GenerationState.GENERATING) return;
+    if (!prompt.trim() || status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING || cooldown > 0) return;
     setError(null);
+    setShowApiKeyPrompt(false);
     await resumeAudio();
-    setStatus(GenerationState.GENERATING);
-    setLoadingMessage("IGNITING KERNEL...");
 
     try {
       const ai = getGeminiAiInstance();
+      let mediaUrl = null;
+      let mediaType = kernelConfig.generationType;
+      let text = '';
 
-      // Generate text content
-      const textResult = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `[MAX_BRUTALITY] ${prompt}. RED AND BLACK BRUTALIST ART.`,
-      });
-      const text = textResult.text;
+      if (kernelConfig.generationType === 'image') {
+        setStatus(GenerationState.GENERATING);
+        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...");
+        const imageResponse = await callGeminiWithRetry(() => {
+          const imageRequest = {
+            model: 'gemini-3-pro-image-preview',
+            contents: {
+              parts: [{ text: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.` }]
+            },
+            config: { imageConfig: { aspectRatio: "1:1" } }
+          };
+          console.log("DEBUG: Image Generation Request:", JSON.stringify(imageRequest, null, 2));
+          return ai.models.generateContent(imageRequest);
+        });
+
+        const imgPart = imageResponse.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+        if (!imgPart?.inlineData?.data) throw new Error("ART_CORE_FAILURE");
+        mediaUrl = `data:image/png;base64,${imgPart.inlineData.data}`;
+
+        // Also generate text description for the image
+        const textResult = await ai.models.generateContent({
+          model: "gemini-1.5-flash-001",
+          contents: `Describe the following image: ${prompt}`,
+        });
+        text = textResult.text;
+
+      } else { // 'text' generation
+        setStatus(GenerationState.GENERATING);
+        setLoadingMessage("IGNITING KERNEL (TEXT)...");
+        const textResult = await ai.models.generateContent({
+          model: "gemini-1.5-flash-001",
+          contents: `[MAX_BRUTALITY] ${prompt}. RED AND BLACK BRUTALIST ART.`,
+        });
+        text = textResult.text;
+      }
 
       // Audio generation logic (retained from previous implementation)
       setLoadingMessage("ROUTING HIGH-DENSITY PROTOCOL (AUDIO)....");
@@ -217,7 +249,7 @@ export default function App() {
       } else {
         const audioGeminiResponse = await callGeminiWithRetry(() => {
           const audioGeminiRequest = {
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-1.5-flash-001',
             contents: {
               parts: [{ text: `Generate brutal metal JSON for the prompt "${prompt}". Format: { "bpm": number (200-999), "pattern": 16x8 matrix where values are 0-255 }. Output raw JSON only.` }] 
             },
@@ -230,8 +262,8 @@ export default function App() {
       }
 
       const resultData = {
-        mediaUrl: null, // No image/video generated directly by this simplified flow
-        mediaType: 'text',
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
         content: text,
         trackStructure: {
           bpm: audioConfig.bpm || 666,
@@ -322,7 +354,7 @@ export default function App() {
       </div>
       <div className="flex-1 flex flex-col min-w-0 bg-[#020202] relative">
         <div className="flex-1 relative flex items-center justify-center p-2 md:p-8 overflow-hidden">
-          {(status === GenerationState.GENERATING || cooldown > 0 || error || showApiKeyPrompt) && (
+          {(status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING || cooldown > 0 || error || showApiKeyPrompt) && (
             <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center text-center p-4">
               {cooldown > 0 ? (
                 <>
@@ -380,8 +412,23 @@ export default function App() {
                 ></video>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center w-full h-full p-4 overflow-auto text-white text-lg font-mono whitespace-pre-wrap">
-                <p>{currentResult.content}</p>
+              <div className="relative w-full h-full max-w-full max-h-full aspect-square border-2 border-red-600 bg-black shadow-[0_0_50px_rgba(255,0,0,0.1)]">
+                <Visualizer
+                  mediaUrl={currentResult.mediaUrl}
+                  mediaType={currentResult.mediaType}
+                  isActive={status === GenerationState.PLAYING}
+                  bpm={currentResult.trackStructure.bpm}
+                  currentPrompt={prompt}
+                  overdrive={overdrive}
+                  chaosMode={chaosMode}
+                  // New props for post-processing
+                  enableBloom={kernelConfig.enableBloom}
+                  bloomIntensity={kernelConfig.bloomIntensity}
+                  enableChromaticAberration={kernelConfig.enableChromaticAberration}
+                  chromaticAberrationIntensity={kernelConfig.chromaticAberrationIntensity}
+                  enableScanlines={kernelConfig.enableScanlines}
+                  scanlineIntensity={kernelConfig.scanlineIntensity}
+                />
               </div>
             )
           ) : (
@@ -405,7 +452,7 @@ export default function App() {
             ></textarea>
             <button
               onClick={handleGenerate}
-              disabled={status === GenerationState.GENERATING || cooldown > 0 || showApiKeyPrompt}
+              disabled={status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING || cooldown > 0 || showApiKeyPrompt}
               className="bg-red-600 text-black px-6 md:px-12 text-xl md:text-4xl hover:bg-white transition-all font-black italic disabled:opacity-30"
             >
               {status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING ? 'BUSY' : 'IGNITE'}
