@@ -162,16 +162,15 @@ export default function App() {
       throw new Error("GEMINI_API_FAILURE_MAX_RETRIES");
   };
 
-  const handleGenerate = async () => {;
-  if (!prompt.trim() || status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING) retu
-                                      setError(null);
+    const handleGenerate = async () => {
+    if (!prompt.trim() || status === GenerationState.GENERATING || status === GenerationState.VIDEO_GENERATING) return;
+    
+    setError(null);
     setShowApiKeyPrompt(false);
     await resumeAudio();
 
     try {
-
       const ai = getGeminiAiInstance();
-      
       let mediaUrl = null;
       let mediaType = kernelConfig.generationType;
 
@@ -187,7 +186,7 @@ export default function App() {
         
         let operation = await callGeminiWithRetry(() => ai.models.generateVideos({
           model: 'veo-3.1-fast-generate-preview',
-          prompt: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART. Generate a short, brutal, metal-themed video.`,
+          prompt: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.`,
           config: {
             numberOfVideos: 1,
             resolution: kernelConfig.videoResolution,
@@ -195,22 +194,22 @@ export default function App() {
           }
         }));
 
-        setLoadingMessage("RENDERING VOID-SEQUENCE (THIS MAY TAKE MINUTES)...");
+        setLoadingMessage("RENDERING VOID-SEQUENCE...");
         while (!operation.done) {
-          await new Promise(resolve => setTimeout(resolve, 10000)); // Poll every 10 seconds
+          await new Promise(resolve => setTimeout(resolve, 10000));
           operation = await callGeminiWithRetry(() => ai.operations.getVideosOperation({operation: operation}));
         }
 
         const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-        if (!downloadLink) throw new Error("VIDEO_CORE_FAILURE: No video URI returned.");
-        mediaUrl = `${downloadLink}&key=${process.env.API_KEY}`; // Append API key for direct fetch
+        if (!downloadLink) throw new Error("VIDEO_CORE_FAILURE");
+        mediaUrl = `${downloadLink}&key=${process.env.API_KEY}`;
 
-      } else { // 'image' generation
+      } else { 
         setStatus(GenerationState.GENERATING); 
-        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...")
+        setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...");
         const imageResponse = await callGeminiWithRetry(() => 
           ai.models.generateContent({
-            model: 'gemini-1.5-flash
+            model: 'gemini-1.5-flash',
             contents: { 
               parts: [{ text: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.` }] 
             },
@@ -224,6 +223,63 @@ export default function App() {
       }
 
       setLoadingMessage("ROUTING HIGH-DENSITY PROTOCOL (AUDIO)...");
+      let audioConfig;
+
+      if (kernelConfig.useGroqForAudio && kernelConfig.groqKey) {
+        const groqRes = await fetchWithRetry("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${kernelConfig.groqKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-405b-reasoning",
+            messages: [
+              { role: "system", content: "S-1792 KERNEL: Return ONLY raw JSON: { \"bpm\": number, \"pattern\": 16x8 matrix }." },
+              { role: "user", content: `COMPOSITE PATTERN FOR: ${prompt}` }
+            ],
+            response_format: { type: "json_object" }
+          })
+        });
+        const data = await groqRes.json();
+        audioConfig = JSON.parse(data.choices[0].message.content);
+      } else {
+        const audioGeminiResponse = await callGeminiWithRetry(() => 
+          ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: { 
+              parts: [{ text: `Generate brutal metal JSON for "${prompt}". { "bpm": number, "pattern": 16x8 matrix }.` }] 
+            },
+            config: { responseMimeType: "application/json" }
+          })
+        );
+        audioConfig = JSON.parse(audioGeminiResponse.text || '{}');
+      }
+
+      const result = {
+        mediaUrl,
+        mediaType,
+        trackStructure: {
+          bpm: audioConfig.bpm || 666,
+          pattern: audioConfig.pattern || Array(16).fill(0).map(() => Array(8).fill(0).map(() => Math.random() > 0.5 ? 255 : 0)),
+          distorted: true,
+          gain: volume,
+          atmosphere: 'total_annihilation'
+        },
+        prompt
+      };
+
+      setCurrentResult(result);
+      setHistory(prev => [{ id: Date.now().toString(), timestamp: Date.now(), data: result }, ...prev].slice(0, 50));
+      setStatus(GenerationState.PLAYING);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "SYNTHESIS_ERROR");
+      setStatus(GenerationState.ERROR);
+    } finally {
+      setLoadingMessage(''); 
+    }
+  };
+
       let audioConfig;
 
       if (kernelConfig.useGroqForAudio && kernelConfig.groqKey) {
