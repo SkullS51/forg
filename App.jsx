@@ -313,6 +313,20 @@ export default function App() {
       >
         View_Gallery
       </button>
+      <button
+        onClick={async () => {
+          try {
+            const response = await fetch('/api/db-test');
+            const data = await response.json();
+            alert(`DB Test Status: ${data.status}, Time: ${data.time}`);
+          } catch (err) {
+            alert(`DB Test Failed: ${err.message}`);
+          }
+        }}
+        className="px-4 border-r-2 border-red-900 bg-[#100000] text-white italic text-xs uppercase hover:bg-red-600 transition-colors"
+      >
+        DB_Test
+      </button>
       <div className="flex flex-1 items-stretch">
         <button
           onClick={() => setOverdrive(!overdrive)}
