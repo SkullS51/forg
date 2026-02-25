@@ -183,37 +183,36 @@ export default function App() {
       if (kernelConfig.generationType === 'image') {
         setStatus(GenerationState.GENERATING);
         setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...");
-        const imageResponse = await callGeminiWithRetry(() => {
-          const imageRequest = {
-            model: 'gemini-3-pro-image-preview',
-            contents: {
-              parts: [{ text: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.` }]
-            },
-            config: { imageConfig: { aspectRatio: "1:1" } }
-          };
-          console.log("DEBUG: Image Generation Request:", JSON.stringify(imageRequest, null, 2));
-          return ai.models.generateContent(imageRequest);
+        const imageApiCall = await fetchWithRetry(`${import.meta.env.VITE_API_BASE_URL}/api/generate-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, aspectRatio: "1:1" })
         });
+        const imageData = await imageApiCall.json();
+        if (!imageData.imageUrl) throw new Error("REDHAT_IMAGE_API_FAILURE");
+        mediaUrl = imageData.imageUrl;
 
-        const imgPart = imageResponse.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-        if (!imgPart?.inlineData?.data) throw new Error("ART_CORE_FAILURE");
-        mediaUrl = `data:image/png;base64,${imgPart.inlineData.data}`;
-
-        // Also generate text description for the image
-        const textResult = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: `Describe the following image: ${prompt}`,
+        // Also generate text description for the image via Red Hat API
+        const textApiCall = await fetchWithRetry(`${import.meta.env.VITE_API_BASE_URL}/api/generate-text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: `Describe the following image: ${prompt}` })
         });
-        text = textResult.text;
+        const textData = await textApiCall.json();
+        if (!textData.text) throw new Error("REDHAT_TEXT_API_FAILURE");
+        text = textData.text;
 
       } else { // 'text' generation
         setStatus(GenerationState.GENERATING);
         setLoadingMessage("IGNITING KERNEL (TEXT)...");
-        const textResult = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: `[MAX_BRUTALITY] ${prompt}. RED AND BLACK BRUTALIST ART.`,
+        const textApiCall = await fetchWithRetry(`${import.meta.env.VITE_API_BASE_URL}/api/generate-text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: `[MAX_BRUTALITY] ${prompt}. RED AND BLACK BRUTALIST ART.` })
         });
-        text = textResult.text;
+        const textData = await textApiCall.json();
+        if (!textData.text) throw new Error("REDHAT_TEXT_API_FAILURE");
+        text = textData.text;
       }
 
       // Audio generation logic (retained from previous implementation)
@@ -246,19 +245,15 @@ export default function App() {
         const data = await groqRes.json();
         if (!data.choices?.[0]?.message?.content) throw new Error("GROQ_EMPTY_STREAM");
         audioConfig = JSON.parse(data.choices[0].message.content);
-      } else {
-        const audioGeminiResponse = await callGeminiWithRetry(() => {
-          const audioGeminiRequest = {
-            model: 'gemini-3-flash-preview',
-            contents: {
-              parts: [{ text: `Generate brutal metal JSON for the prompt "${prompt}". Format: { "bpm": number (200-999), "pattern": 16x8 matrix where values are 0-255 }. Output raw JSON only.` }] 
-            },
-            config: { responseMimeType: "application/json" }
-          };
-          console.log("DEBUG: Gemini Audio Request:", JSON.stringify(audioGeminiRequest, null, 2));
-          return ai.models.generateContent(audioGeminiRequest);
+      } else { // Use Red Hat API for audio generation
+        const audioApiCall = await fetchWithRetry(`${import.meta.env.VITE_API_BASE_URL}/api/generate-audio`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: `Generate brutal metal JSON for the prompt "${prompt}".` })
         });
-        audioConfig = JSON.parse(audioGeminiResponse.text || '{}');
+        const audioData = await audioApiCall.json();
+        if (!audioData.audioConfig) throw new Error("REDHAT_AUDIO_API_FAILURE");
+        audioConfig = audioData.audioConfig;
       }
 
       const resultData = {
