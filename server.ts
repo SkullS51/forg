@@ -5,13 +5,22 @@ import dotenv from 'dotenv';
 
 dotenv.config(); // Load environment variables from .env file
 
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error("FATAL: DATABASE_URL environment variable is not set.");
+  process.exit(1);
+}
+console.log("DEBUG: DATABASE_URL loaded:", DATABASE_URL ? "YES (first 10 chars: " + DATABASE_URL.substring(0, 10) + ")" : "NO");
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.use(express.json()); // Middleware to parse JSON request bodies
+
   // Database connection setup
   const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: DATABASE_URL,
     ssl: { rejectUnauthorized: false } // Required for NeonDB
   });
 
@@ -42,6 +51,12 @@ async function startServer() {
       res.sendFile('dist/index.html', { root: '.' });
     });
   }
+
+  // Generic error handling middleware
+  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Unhandled server error:", err);
+    res.status(500).json({ status: "Server error", error: err.message });
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

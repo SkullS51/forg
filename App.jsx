@@ -185,7 +185,7 @@ export default function App() {
         setLoadingMessage("HARVESTING NEURAL FLUID (VISUALS)...");
         const imageResponse = await callGeminiWithRetry(() => {
           const imageRequest = {
-            model: 'gemini-3-pro-image-preview',
+            model: 'gemini-3-flash-preview',
             contents: {
               parts: [{ text: `[MAX_BRUTALITY] ${prompt}. VISCERAL INDUSTRIAL DECAY, SERRATED OBSIDIAN STRUCTURES, DARKNESS, RED AND BLACK, HIGH CONTRAST BRUTALIST ART.` }]
             },
@@ -201,7 +201,7 @@ export default function App() {
 
         // Also generate text description for the image
         const textResult = await ai.models.generateContent({
-          model: "gemini-1.5-flash-001",
+          model: "gemini-3-flash-preview",
           contents: `Describe the following image: ${prompt}`,
         });
         text = textResult.text;
@@ -210,7 +210,7 @@ export default function App() {
         setStatus(GenerationState.GENERATING);
         setLoadingMessage("IGNITING KERNEL (TEXT)...");
         const textResult = await ai.models.generateContent({
-          model: "gemini-1.5-flash-001",
+          model: "gemini-3-flash-preview",
           contents: `[MAX_BRUTALITY] ${prompt}. RED AND BLACK BRUTALIST ART.`,
         });
         text = textResult.text;
@@ -249,7 +249,7 @@ export default function App() {
       } else {
         const audioGeminiResponse = await callGeminiWithRetry(() => {
           const audioGeminiRequest = {
-            model: 'gemini-1.5-flash-001',
+            model: 'gemini-3-flash-preview',
             contents: {
               parts: [{ text: `Generate brutal metal JSON for the prompt "${prompt}". Format: { "bpm": number (200-999), "pattern": 16x8 matrix where values are 0-255 }. Output raw JSON only.` }] 
             },
@@ -316,7 +316,7 @@ export default function App() {
       <button
         onClick={async () => {
           try {
-            const response = await fetch('/api/db-test');
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/db-test`);
             const data = await response.json();
             alert(`DB Test Status: ${data.status}\nTime: ${data.time}`);
           } catch (err) {
