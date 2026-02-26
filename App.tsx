@@ -313,7 +313,7 @@ export default function App() {
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src="https://picsum.photos/seed/dragon_background/1920/1080?blur=2" // Placeholder dragon background
+          src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Dragon_fire.jpg/1920px-Dragon_fire.jpg" // Direct thematic dragon background
           alt="Dragon Background"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"

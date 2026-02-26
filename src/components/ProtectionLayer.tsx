@@ -11,7 +11,7 @@ const ProtectionLayer: React.FC<ProtectionLayerProps> = ({ trigger }) => {
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-95 text-red-600 ui-font p-4">
       {/* Dragon Head */}
       <img
-        src="https://picsum.photos/seed/ban_dragon/800/600" // Placeholder for ban dragon head
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Dragon_head_sculpture.jpg/800px-Dragon_head_sculpture.jpg" // Direct thematic ban dragon head
         alt="Banned Dragon"
         className="w-64 h-auto mb-8 glitch-text"
         referrerPolicy="no-referrer"
@@ -24,7 +24,7 @@ const ProtectionLayer: React.FC<ProtectionLayerProps> = ({ trigger }) => {
         <p className="text-xl mb-4 glitch-text">All creations incinerated. No appeal. No return.</p>
         <div className="mt-6">
           <img
-            src="https://picsum.photos/seed/fire_small_ban/80/30" // Small fire animation
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Dragon_fire.jpg/80px-Dragon_fire.jpg" // Small fire animation
             alt="fire"
             className="w-20 h-auto mx-auto glitch-text"
             referrerPolicy="no-referrer"

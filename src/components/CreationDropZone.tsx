@@ -155,8 +155,8 @@ const CreationDropZone: React.FC<CreationDropZoneProps> = ({
           bg-cover bg-center rounded-2xl shadow-lg cursor-pointer
           transition-all duration-300 ease-in-out
           ${isDragging ? 'neon-border-active scale-105' : 'neon-border'}
-          bg-[url('https://picsum.photos/seed/cracked_stone/800/600?blur=1')]`}
-        style={{ borderImage: 'url(https://picsum.photos/seed/fire_border/50/50) 30 round' }}
+          bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Cracked_obsidian_surface.jpg/800px-Cracked_obsidian_surface.jpg')]`}
+        style={{ borderImage: 'url(https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Dragon_fire.jpg/50px-Dragon_fire.jpg) 30 round' }}
       >
         <input
           type="file"
@@ -170,7 +170,7 @@ const CreationDropZone: React.FC<CreationDropZoneProps> = ({
         <div className="absolute inset-0 bg-black opacity-60 rounded-2xl"></div>
         <div className="absolute bottom-4">
           <img
-            src="https://picsum.photos/seed/fire_small/50/20" // Small fire animation
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Dragon_fire.jpg/50px-Dragon_fire.jpg" // Small fire animation
             alt="fire"
             className="w-12 h-auto"
             referrerPolicy="no-referrer"
@@ -190,7 +190,7 @@ const CreationDropZone: React.FC<CreationDropZoneProps> = ({
         <div className="absolute inset-0 bg-gradient-to-r from-red-800 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         <div className="absolute inset-0 flex items-center justify-center">
           <img
-            src="https://picsum.photos/seed/fire_large/100/40" // Large fire animation
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Dragon_fire.jpg/100px-Dragon_fire.jpg" // Large fire animation
             alt="fire"
             className="w-24 h-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300"
             referrerPolicy="no-referrer"
