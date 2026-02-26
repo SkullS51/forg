@@ -1,0 +1,7 @@
+export enum GenerationState {
+  IDLE = 'IDLE',
+  GENERATING = 'GENERATING',
+  VIDEO_GENERATING = 'VIDEO_GENERATING',
+  PLAYING = 'PLAYING',
+  ERROR = 'ERROR',
+}
