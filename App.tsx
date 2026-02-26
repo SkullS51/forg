@@ -1,0 +1,249 @@
+// App.tsx
+import React, { useState } from 'react';
+import { createRoot } from 'react-dom/client'; // Import once
+import CreationDropZone from './CreationDropZone'; // Your component
+import ProtectionLayer from './ProtectionLayer'; // If you have it
+
+// Only create root ONCE - this prevents multiple calls error
+const container = document.getElementById('root');
+if (!container) throw new Error('Root element not found');
+
+const root = createRoot(container); // Create once
+
+function App() {
+  const [isBanned, setIsBanned] = useState(false);
+  const [apiKey, setApiKey] = useState(''); // For Red Hat or any API key input
+
+  const handleSelectApiKey = (key: string) => {
+    setApiKey(key);
+    console.log('API Key set:', key);
+    // TODO: Use this key for backend calls if needed
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white font-mono">
+      {/* API Key Input (placeholder if needed) */}
+      {!apiKey && (
+        <div className="fixed top-4 left-4 z-50 bg-gray-900/80 p-4 rounded-lg border border-red-800">
+          <input
+            type="text"
+            placeholder="Enter API Key..."
+            onChange={(e) => handleSelectApiKey(e.target.value)}
+            className="bg-black border border-red-600 p-2 rounded text-red-400"
+          />
+        </div>
+      )}
+
+      {/* Main Content */}
+      <CreationDropZone />
+
+      {/* Ban Overlay - triggers on detection */}
+      <ProtectionLayer trigger={isBanned} />
+    </div>
+  );
+}
+
+// Render once
+root.render(<App />);
+
+// Export for hot reload if needed
+export default App;
+// ProtectionLayer.tsx
+import { useEffect, useState } from 'react';
+
+const ProtectionLayer = ({ trigger }: { trigger: boolean }) => {
+  const [stage, setStage] = useState(0); // 0: hidden, 1: caught, 2: banned
+
+  useEffect(() => {
+    if (trigger) {
+      setStage(1); // Show caught
+      const timer = setTimeout(() => setStage(2), 1200); // Fade to ban after 1.2s
+      return () => clearTimeout(timer);
+    }
+  }, [trigger]);
+
+  if (stage === 0) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 transition-opacity duration-1000">
+      <div className={`relative text-center transition-opacity duration-800 ${stage === 1 ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Caught screen background image */}
+        <img 
+          src="/dragon-caught-bg.jpg" // Your first image URL
+          alt="Dragon Caught You"
+          className="absolute inset-0 object-cover opacity-80"
+        />
+        <div className="relative z-10 p-12 max-w-4xl mx-auto">
+          <h1 className="text-6xl md:text-8xl font-black text-red-600 drop-shadow-2xl tracking-wider">
+            THE DRAGON CAUGHT YOU
+          </h1>
+          <h2 className="text-5xl md:text-7xl font-extrabold text-orange-500 mt-6">
+            BREAKING THE RULES.
+          </h2>
+          <p className="text-3xl text-gray-200 mt-12 font-bold">
+            You are caught.<br />
+            <span className="text-red-400">No coming back.</span>
+          </p>
+        </div>
+      </div>
+
+      <div className={`absolute inset-0 transition-opacity duration-1000 ${stage === 2 ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Banned screen background image */}
+        <img 
+          src="/dragon-banned-bg.jpg" // Your second image URL
+          alt="Permanent Ban"
+          className="absolute inset-0 object-cover opacity-90"
+        />
+        <div className="relative z-10 p-12 max-w-4xl mx-auto text-center">
+          <h1 className="text-7xl md:text-9xl font-black text-red-700 drop-shadow-3xl animate-pulse">
+            BANNED
+          </h1>
+          <p className="text-4xl text-orange-600 mt-8 font-bold">
+            Permanently. Immediately.<br />
+            No return. End game.
+          </p>
+          <p className="text-2xl text-gray-400 mt-16">
+            The Void claims you. The forge is sealed.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProtectionLayer;// CreationDropZone.tsx
+import { useState, useRef } from 'react';
+import { Upload, Music, Video, Download, Sparkles } from 'lucide-react'; // or your icon lib
+
+export default function CreationDropZone() {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragonPower, setDragonPower] = useState(50); // 0–100 slider
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  // Drag & drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      console.log('Dropped files:', files);
+      // TODO: Handle file upload / process creation
+      alert('Creation dropped into the forge! Processing...');
+    }
+  };
+
+  const handleIgnite = () => {
+    // TODO: Trigger final render/export with current dragonPower value
+    console.log('IGNITE! Dragon Power:', dragonPower);
+    alert('The forge ignites! Your creation is being forged...');
+  };
+
+  return (
+    <div className="relative min-h-screen bg-black overflow-hidden">
+      {/* Dragon Background */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="/dragon-bg.jpg" // Replace with your dragon image URL
+          alt="Void Metal Dragon Guardian"
+          className="w-full h-full object-cover opacity-70"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/60 to-black/90" />
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-6 text-center">
+        {/* Drop Zone */}
+        <div
+          ref={dropRef}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`w-full max-w-4xl aspect-[4/3] rounded-3xl border-4 border-dashed transition-all duration-300 ${
+            isDragging
+              ? 'border-red-500 bg-red-950/40 scale-105 shadow-2xl shadow-red-900/50'
+              : 'border-orange-700/50 bg-black/40 hover:border-orange-500/70'
+          } backdrop-blur-sm flex flex-col items-center justify-center`}
+        >
+          <div className="text-6xl md:text-8xl font-black text-red-600 drop-shadow-2xl mb-8 tracking-wider">
+            DROP YOUR CREATION HERE
+          </div>
+
+          <div className="text-2xl md:text-4xl text-orange-400 font-bold mb-12">
+            The Dragon awaits your final offering...
+          </div>
+
+          {/* Upload / Gen Buttons */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-16">
+            <button className="stone-btn">
+              <Upload size={32} /> Upload Photo
+            </button>
+            <button className="stone-btn">
+              <Upload size={32} /> Upload Video
+            </button>
+            <button className="stone-btn">
+              <Music size={32} /> Music Gen
+            </button>
+            <button className="stone-btn">
+              <Video size={32} /> Video Gen
+            </button>
+            <button className="stone-btn">
+              <Download size={32} /> Export
+            </button>
+          </div>
+
+          {/* Effects Eye */}
+          <button className="mb-12 group relative">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-red-900 to-black border-4 border-orange-600 flex items-center justify-center shadow-2xl shadow-red-900/70 group-hover:scale-110 transition-transform">
+              <Sparkles size={48} className="text-orange-400 group-hover:text-red-400 transition-colors" />
+            </div>
+            <div className="absolute inset-0 rounded-full bg-red-600/30 blur-xl group-hover:blur-2xl transition-all" />
+            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xl font-bold text-orange-300">
+              Effects
+            </span>
+          </button>
+        </div>
+
+        {/* Dragon Power Slider */}
+        <div className="w-full max-w-2xl mt-16">
+          <label className="block text-3xl font-bold text-orange-500 mb-6 text-center">
+            Dragon Power
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={dragonPower}
+            onChange={(e) => setDragonPower(Number(e.target.value))}
+            className="w-full h-4 bg-gradient-to-r from-gray-900 via-red-900 to-orange-600 rounded-full appearance-none cursor-pointer accent-red-500"
+          />
+          <div className="flex justify-between text-xl text-gray-300 mt-2">
+            <span>Low Flame</span>
+            <span className="text-red-500 font-bold">MAX POWER</span>
+          </div>
+        </div>
+
+        {/* IGNITE Button */}
+        <button
+          onClick={handleIgnite}
+          className="mt-16 px-24 py-10 bg-gradient-to-b from-red-700 to-red-950 rounded-3xl text-6xl md:text-8xl font-black text-white border-8 border-orange-600 shadow-2xl shadow-red-900/80 hover:scale-105 hover:shadow-red-600/60 transition-all duration-300 active:scale-95"
+        >
+          IGNITE
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Optional tailwind-like class for stone buttons
+const stoneBtnClass = `
+  px-8 py-6 bg-gradient-to-b from-gray-800 to-black rounded-xl border-4 border-orange-700/70
+  text-xl md:text-2xl font-bold text-orange-300 hover:bg-red-950/50 hover:border-red-500
+  transition-all shadow-lg shadow-black/70 flex flex-col items-center gap-3
+`;
